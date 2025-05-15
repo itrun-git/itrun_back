@@ -32,3 +32,5 @@ coverage/
 
 # Build
 build/
+
+uploads/
