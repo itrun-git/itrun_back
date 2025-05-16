@@ -6,6 +6,8 @@ import { User, UserPurpose } from '../user/user.entity';
 import * as bcrypt from 'bcryptjs';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
+import { LoginDto } from './dto/login.dto';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
@@ -16,6 +18,7 @@ export class AuthService {
     private readonly userRepo: Repository<User>,
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
   ) {}
 
   async checkEmail(email: string): Promise<{ available: boolean }> {
@@ -108,7 +111,6 @@ export class AuthService {
       throw new BadRequestException('Email already verified');
     }
 
-    // Обновим токен
     user.verificationToken = this.generateVerificationToken();
     await this.userRepo.save(user);
 
@@ -123,6 +125,30 @@ export class AuthService {
     });
 
     this.logger.log(`Verification email resent to: ${user.email}`);
+  }
+
+  async login(dto: LoginDto) {
+    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    if (!user) {
+      throw new BadRequestException('Invalid email or password');
+    }
+
+    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new BadRequestException('Invalid email or password');
+    }
+
+    if (!user.emailVerified) {
+      throw new BadRequestException('Please confirm your email before logging in');
+    }
+
+    const payload = { sub: user.id, email: user.email };
+    const token = await this.jwtService.signAsync(payload);
+
+    return {
+      message: 'Login successful',
+      token,
+    };
   }
   
 }
