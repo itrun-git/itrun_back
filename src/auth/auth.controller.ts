@@ -16,7 +16,7 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Check if email is already in use' })
   @Post('check-email')
-  checkEmail(@Body('email') dto: EmailCheckDto) {
+  checkEmail(@Body() dto: EmailCheckDto) {
     return this.authService.checkEmail(dto);
   }
 
