@@ -8,6 +8,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
+import { EmailCheckDto } from './dto/email-check.dto';
 
 @Injectable()
 export class AuthService {
@@ -21,8 +22,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async checkEmail(email: string): Promise<{ available: boolean }> {
-    const exists = await this.userRepo.findOne({ where: { email } });
+  async checkEmail(dto: EmailCheckDto): Promise<{ available: boolean }> {
+    const exists = await this.userRepo.findOne({ where: { email: dto.email } });
     return { available: !exists };
   }
 

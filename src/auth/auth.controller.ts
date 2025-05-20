@@ -6,21 +6,40 @@ import { LoginDto } from './dto/login.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { ApiOperation, ApiBody, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
+import { EmailCheckDto } from './dto/email-check.dto';
+import { SetPurposeDto } from './dto/set-purpose.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @ApiOperation({ summary: 'Check if email is already in use' })
   @Post('check-email')
-  checkEmail(@Body('email') email: string) {
-    return this.authService.checkEmail(email);
+  checkEmail(@Body('email') dto: EmailCheckDto) {
+    return this.authService.checkEmail(dto);
   }
 
+  @ApiOperation({ summary: 'Register new user' })
   @Post('register')
   register(@Body() dto: CreateUserDto) {
     return this.authService.createUser(dto);
   }
 
+  @ApiOperation({ summary: 'Upload user avatar' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', example: 'user-uuid' },
+        avatar: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   @Patch('upload-avatar')
   @UseInterceptors(
     FileInterceptor('avatar', {
@@ -42,27 +61,40 @@ export class AuthController {
     return this.authService.uploadAvatar(userId, avatarUrl);
   }
 
+  @ApiOperation({ summary: 'Set user purpose' })
+  @ApiBearerAuth()
   @Patch('set-purpose')
-  setPurpose(@Body('userId') userId: string, @Body('purpose') purpose: UserPurpose) {
-    return this.authService.setPurpose(userId, purpose);
+  setPurpose(@Body() dto: SetPurposeDto) {
+    return this.authService.setPurpose(dto.userId, dto.purpose);
   }
 
+  @ApiOperation({ summary: 'Send initial verification email' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', example: 'user-uuid' },
+      },
+    },
+  })
   @Patch('send-verification')
   sendVerification(@Body('userId') userId: string) {
     return this.authService.sendVerificationEmail(userId);
   }
 
+  @ApiOperation({ summary: 'Verify email address' })
   @Get('verify')
   verifyEmail(@Query('token') token: string) {
     return this.authService.confirmEmail(token);
   }
 
-  @UsePipes(new ValidationPipe({ whitelist: true }))
+  @ApiOperation({ summary: 'Send verification email again' })
   @Post('resend-verification')
   async resendEmail(@Body('email') email: string) {
     return this.authService.resendVerificationEmail(email);
   }
 
+  @ApiOperation({ summary: 'User login' })
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
