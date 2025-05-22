@@ -1,4 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { BoardMember } from 'src/board/entities/board-member.entity';
+import { FavoriteBoard } from 'src/board/entities/favorite-board.entity';
+import { WorkspaceMember } from 'src/workspace/entities/workspace-member.entity';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 
 export enum UserPurpose {
   PERSONAL = 'personal',
@@ -24,11 +27,7 @@ export class User {
   @Column({ name: 'avatar_url', type: 'varchar', nullable: true })
   avatarUrl?: string;
 
-  @Column({
-    type: 'enum',
-    enum: UserPurpose,
-    nullable: false,
-  })
+  @Column({ type: 'enum', enum: UserPurpose, nullable: false })
   purpose: UserPurpose;
 
   @Column({ name: 'email_verified', default: false })
@@ -45,4 +44,13 @@ export class User {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @OneToMany(() => WorkspaceMember, (member) => member.user, { eager: false })
+  workspaces: WorkspaceMember[];
+
+  @OneToMany(() => BoardMember, (member) => member.user, { eager: false })
+  boards: BoardMember[];
+
+  @OneToMany(() => FavoriteBoard, (fb) => fb.user)
+  favoriteBoards: FavoriteBoard[];
 }

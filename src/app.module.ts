@@ -6,6 +6,8 @@ import { AuthModule } from './auth/auth.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { join } from 'path';
+import { WorkspaceModule } from './workspace/workspace.module';
+import { BoardModule } from './board/board.module';
 
 @Module({
   imports: [
@@ -54,6 +56,8 @@ import { join } from 'path';
     
     UserModule,
     AuthModule,
+    WorkspaceModule,
+    BoardModule,
   ],
 })
 export class AppModule {}
