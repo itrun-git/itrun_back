@@ -9,6 +9,7 @@ import { extname } from 'path';
 import { ApiOperation, ApiBody, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
 import { EmailCheckDto } from './dto/email-check.dto';
 import { SetPurposeDto } from './dto/set-purpose.dto';
+import { ChangeRegistrationEmailDto } from './dto/change-email.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -99,4 +100,11 @@ export class AuthController {
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
+
+  @ApiOperation({ summary: 'Change user email on registration page' })
+  @Patch('change-email')
+  changeEmail(@Body() dto: ChangeRegistrationEmailDto) {
+    return this.authService.changeRegistrationEmail(dto);
+  }
+
 }

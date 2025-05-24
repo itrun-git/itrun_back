@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { EmailCheckDto } from './dto/email-check.dto';
+import { ChangeRegistrationEmailDto } from './dto/change-email.dto';
 
 @Injectable()
 export class AuthService {
@@ -150,6 +151,25 @@ export class AuthService {
       message: 'Login successful',
       token,
     };
+  }
+
+  async changeRegistrationEmail(dto: ChangeRegistrationEmailDto): Promise<{ available: boolean }> {
+    const { currentEmail, newEmail } = dto;
+
+    const emailTaken = await this.userRepo.findOne({ where: { email: newEmail } });
+    if (emailTaken) {
+      throw new ConflictException('New email already in use');
+    }
+
+    const user = await this.userRepo.findOne({ where: { email: currentEmail } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.email = newEmail;
+    await this.userRepo.save(user);
+
+    return { available: true };
   }
   
 }
