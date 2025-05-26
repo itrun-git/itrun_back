@@ -3,10 +3,21 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserPurpose } from './user.entity';
 import * as bcrypt from 'bcrypt';
+import { Workspace } from 'src/workspace/entities/workspace.entity';
 
 @Injectable()
 export class UserService {
   constructor(@InjectRepository(User) private readonly userRepository: Repository<User>) {}
+
+  async findFieldById(userId: string, field: keyof User): Promise<any> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: [field],
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+    return user[field];
+  }
 
   async updateName(userId: string, fullName: string) {
     await this.userRepository.update(userId, { fullName });
@@ -37,7 +48,17 @@ export class UserService {
   }
 
   async updatePurpose(userId: string, purpose: UserPurpose) {
-  await this.userRepository.update(userId, { purpose });
-  return { message: 'Purpose updated' };
-}
+    await this.userRepository.update(userId, { purpose });
+    return { message: 'Purpose updated' };
+  }
+
+  // async getUserWorkspaces(userId: string): Promise<Workspace[]> {
+  //   const memberships = await this.workspaceMemberRepository.find({
+  //     where: { user: { id: userId } },
+  //     relations: ['workspace'],
+  //   });
+
+  //   return memberships.map((m) => m.workspace);
+  // }
+
 }

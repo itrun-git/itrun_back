@@ -1,4 +1,4 @@
-import { Controller, Patch, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Patch, Param, Body, UseGuards, Get } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateNameDto } from './dto/update-name.dto';
 import { UpdateEmailDto } from './dto/update-email.dto';
@@ -16,10 +16,22 @@ import { UpdateAvatarDto } from './dto/update-avatar.dto';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  @ApiOperation({ summary: 'Get user name' })
+  @Get('fullName')
+  getFullName(@CurrentUser() user: UserDto) {
+    return this.userService.findFieldById(user.id, 'fullName');
+  }
+
   @ApiOperation({ summary: 'Update full name' })
   @Patch('update-name')
   updateName(@CurrentUser() user: UserDto, @Body() dto: UpdateNameDto) {
     return this.userService.updateName(user.id, dto.fullName);
+  }
+
+  @ApiOperation({ summary: 'Get user email' })
+  @Get('email')
+  getEmail(@CurrentUser() user: UserDto) {
+    return this.userService.findFieldById(user.id, 'email');
   }
 
   @ApiOperation({ summary: 'Update email address' })
@@ -34,10 +46,22 @@ export class UserController {
     return this.userService.updatePassword(user.id, dto.oldPassword, dto.newPassword);
   }
 
+  @ApiOperation({ summary: 'Get user avatar URL' })
+  @Get('avatar')
+  getAvatar(@CurrentUser() user: UserDto) {
+    return this.userService.findFieldById(user.id, 'avatarUrl');
+  }
+
   @ApiOperation({ summary: 'Update avatar URL' })
   @Patch('update-avatar')
   updateAvatar(@CurrentUser() user: UserDto, @Body() dto: UpdateAvatarDto) {
     return this.userService.updateAvatar(user.id, dto.avatarUrl);
+  }
+
+  @ApiOperation({ summary: 'Get user purpose' })
+  @Get('purpose')
+  getPurpose(@CurrentUser() user: UserDto) {
+    return this.userService.findFieldById(user.id, 'purpose');
   }
 
   @ApiOperation({ summary: 'Update user purpose' })
