@@ -25,8 +25,8 @@ async function bootstrap() {
   }));
 
   // Static Assets
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/',
+  app.useStaticAssets(join(__dirname, '..', '..', 'uploads'), {
+    prefix: '/uploads',
   });
 
   // Swagger Documentation

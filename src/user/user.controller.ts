@@ -69,4 +69,10 @@ export class UserController {
   updatePurpose(@CurrentUser() user: UserDto, @Body() dto: UpdatePurposeDto) {
     return this.userService.updatePurpose(user.id, dto.purpose);
   }
+
+  @ApiOperation({ summary: 'Get user workspaces' })
+  @Get('workspaces')
+  getUserWorkspaces(@CurrentUser() user: UserDto) {
+    return this.userService.getUserWorkspaces(user.id);
+  }
 } 

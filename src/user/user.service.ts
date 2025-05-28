@@ -4,10 +4,17 @@ import { Repository } from 'typeorm';
 import { User, UserPurpose } from './user.entity';
 import * as bcrypt from 'bcrypt';
 import { Workspace } from 'src/workspace/entities/workspace.entity';
+import { WorkspaceMember } from 'src/workspace/entities/workspace-member.entity';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectRepository(User) private readonly userRepository: Repository<User>) {}
+  constructor(
+    @InjectRepository(User) 
+    private readonly userRepository: Repository<User>,
+
+    @InjectRepository(WorkspaceMember)
+    private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
+  ) {}
 
   async findFieldById(userId: string, field: keyof User): Promise<any> {
     const user = await this.userRepository.findOne({
@@ -52,13 +59,17 @@ export class UserService {
     return { message: 'Purpose updated' };
   }
 
-  // async getUserWorkspaces(userId: string): Promise<Workspace[]> {
-  //   const memberships = await this.workspaceMemberRepository.find({
-  //     where: { user: { id: userId } },
-  //     relations: ['workspace'],
-  //   });
+  async getUserWorkspaces(userId: string): Promise<Workspace[]> {
+    const memberships = await this.workspaceMemberRepository.find({
+      where: { user: { id: userId } },
+      relations: ['workspace'],
+    });
 
-  //   return memberships.map((m) => m.workspace);
-  // }
+    if (!memberships || memberships.length === 0) {
+      throw new NotFoundException('No workspaces found for this user');
+    }
+    
+    return memberships.map((m) => m.workspace);
+  }
 
 }

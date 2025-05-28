@@ -1,4 +1,183 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import { Workspace, WorkspaceVisibility } from './entities/workspace.entity';
+import { WorkspaceMember, WorkspaceMemberRole } from './entities/workspace-member.entity';
+import { WorkspaceMemberDto } from './dto/workspace-member.dto';
+import * as jwt from 'jsonwebtoken';
+import { ConfigService } from '@nestjs/config';
+import { InvitePayload } from './interfaces/invitePayload.interface';
+
+const INVITE_SECRET = process.env.INVITE_SECRET!;
 
 @Injectable()
-export class WorkspaceService {}
+export class WorkspaceService {
+  constructor(
+    @InjectRepository(Workspace) private workspaceRepo: Repository<Workspace>,
+    @InjectRepository(WorkspaceMember) private memberRepo: Repository<WorkspaceMember>,
+    private readonly configService: ConfigService,
+  ) {}
+
+  async createWorkspace(dto: CreateWorkspaceDto, userId: string): Promise<Workspace> {
+    const workspace = this.workspaceRepo.create(dto);
+    await this.workspaceRepo.save(workspace);
+
+    const member = this.memberRepo.create({
+      user: { id: userId },
+      workspace,
+      role: WorkspaceMemberRole.ADMIN,
+    });
+    await this.memberRepo.save(member);
+
+    return workspace;
+  }
+
+  async getMembers(workspaceId: string): Promise<WorkspaceMemberDto[]> {
+    const workspace = await this.workspaceRepo.findOne({
+      where: { id: workspaceId },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const members = await this.memberRepo
+    .createQueryBuilder('member')
+    .innerJoin('member.user', 'user')
+    .where('member.workspace.id = :workspaceId', { workspaceId })
+    .select([
+      'user.id AS id',
+      'user.fullName AS fullName',
+      'user.email AS email',
+      'user.avatarUrl AS avatarUrl',
+    ])
+    .getRawMany();
+
+    return members.map((raw) => ({
+      id: raw.id,
+      fullName: raw.fullName,
+      email: raw.email,
+      avatarUrl: raw.avatarUrl,
+    }));
+  }
+
+  async updateName(workspaceId: string, userId: string, name: string) {
+    const member = await this.memberRepo.findOne({
+      where: {
+        workspace: { id: workspaceId },
+        user: { id: userId },
+      },
+      relations: ['workspace'],
+    });
+
+    if (!member) throw new NotFoundException('You are not a member of this workspace!');
+    if (member.role !== WorkspaceMemberRole.ADMIN) throw new ForbiddenException('Нет доступа');
+
+    member.workspace.name = name;
+    return this.workspaceRepo.save(member.workspace);
+  }
+
+  async updateImage(workspaceId: string, userId: string, imageUrl: string) {
+    const member = await this.memberRepo.findOne({
+      where: {
+        workspace: { id: workspaceId },
+        user: { id: userId },
+      },
+      relations: ['workspace', 'user'],
+    });
+
+    if (!member || member.role !== WorkspaceMemberRole.ADMIN) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    await this.workspaceRepo.update(workspaceId, { imageUrl });
+    return { success: true, imageUrl };
+  }
+
+  async updateVisibility(workspaceId: string, userId: string, visibility: WorkspaceVisibility) {
+    const member = await this.memberRepo.findOne({
+      where: {
+        workspace: { id: workspaceId },
+        user: { id: userId },
+      },
+      relations: ['workspace'],
+    });
+
+    if (!member) throw new NotFoundException('You are not a member of this workspace!');
+    if (member.role !== WorkspaceMemberRole.ADMIN) throw new ForbiddenException('Access denied');
+
+    member.workspace.visibility = visibility;
+    return this.workspaceRepo.save(member.workspace);
+  }
+
+  async deleteWorkspace(id: string, userId: string) {
+    const member = await this.memberRepo.findOne({
+      where: {
+        workspace: { id },
+        user: { id: userId },
+      },
+      relations: ['workspace'],
+    });
+
+    if (!member) throw new NotFoundException('Membership not found');
+    if (member.role !== WorkspaceMemberRole.ADMIN) throw new ForbiddenException('Only admin can delete');
+
+    await this.workspaceRepo.remove(member.workspace);
+  }
+
+  async generateInviteLink(workspaceId: string, userId: string) {
+    const member = await this.memberRepo.findOne({
+      where: { workspace: { id: workspaceId }, user: { id: userId } },
+      relations: ['workspace', 'user']
+    });
+
+    if (!member || member.role !== WorkspaceMemberRole.ADMIN) {
+      throw new ForbiddenException('Only an admin can create an invite link');
+    }
+
+    const secret = this.configService.get<string>('INVITE_SECRET');
+    if (!secret) throw new Error('INVITE_SECRET is not defined');
+
+    const token = jwt.sign({ workspaceId }, secret, { expiresIn: '1d' });
+    const inviteLink = `${process.env.FRONTEND_URL}/invite?token=${token}`;
+    return { inviteLink };
+  }
+
+  async joinWithInviteToken(token: string, userId: string) {
+    const secret = this.configService.get<string>('INVITE_SECRET');
+    if (!secret) throw new Error('INVITE_SECRET is not defined');
+
+    let payload: InvitePayload;
+    try {
+      payload = jwt.verify(token, secret) as InvitePayload;
+    } catch (err) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+
+    const workspace = await this.workspaceRepo.findOne({ where: { id: payload.workspaceId } });
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const alreadyMember = await this.memberRepo.findOne({
+      where: { workspace: { id: payload.workspaceId }, user: { id: userId } },
+      relations: ['workspace', 'user']
+    });
+
+    if (alreadyMember) {
+      return { message: 'You are already a member of this workspace' };
+    }
+
+    const member = this.memberRepo.create({
+      workspace,
+      user: { id: userId },
+      role: WorkspaceMemberRole.MEMBER,
+    });
+
+    await this.memberRepo.save(member);
+
+    return { message: 'Successfully joined the workspace', workspaceId: workspace.id };
+  }
+
+}
