@@ -10,5 +10,6 @@ import { ConfigModule } from '@nestjs/config';
   imports: [TypeOrmModule.forFeature([Workspace, WorkspaceMember]), ConfigModule],
   controllers: [WorkspaceController],
   providers: [WorkspaceService],
+  exports: [TypeOrmModule],
 })
 export class WorkspaceModule {}

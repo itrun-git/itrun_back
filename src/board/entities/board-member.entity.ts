@@ -21,6 +21,9 @@ export class BoardMember {
   @Column({ type: 'enum', enum: BoardRole, default: BoardRole.MEMBER })
   role: BoardRole;
 
+  @Column({ type: 'timestamp', nullable: true })
+  lastViewedAt: Date; 
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

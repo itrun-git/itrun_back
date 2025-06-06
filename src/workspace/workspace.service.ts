@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
@@ -8,8 +8,7 @@ import { WorkspaceMemberDto } from './dto/workspace-member.dto';
 import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
 import { InvitePayload } from './interfaces/invitePayload.interface';
-
-const INVITE_SECRET = process.env.INVITE_SECRET!;
+import { User } from 'src/user/user.entity';
 
 @Injectable()
 export class WorkspaceService {
@@ -180,4 +179,91 @@ export class WorkspaceService {
     return { message: 'Successfully joined the workspace', workspaceId: workspace.id };
   }
 
+  async removeMember(workspaceId: string, user: User, targetUserId: string): Promise<void> {
+    const workspace = await this.workspaceRepo.findOne({
+      where: { id: workspaceId },
+      relations: ['members', 'members.user'],
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const currentMember = workspace.members.find(
+      (member) => member.user.id === user.id,
+    );
+
+    if (!currentMember || currentMember.role !== WorkspaceMemberRole.ADMIN) {
+      throw new ForbiddenException('Only admin can remove members');
+    }
+
+    if (user.id === targetUserId) {
+      throw new BadRequestException('You cannot remove yourself');
+    }
+
+    const targetMember = workspace.members.find(
+      (member) => member.user.id === targetUserId,
+    );
+
+    if (!targetMember) {
+      throw new NotFoundException('Target member not found in workspace');
+    }
+
+    if (targetMember.role === WorkspaceMemberRole.ADMIN) {
+      throw new ForbiddenException('Cannot remove another admin');
+    }
+
+    await this.memberRepo.delete({
+      workspace: { id: workspaceId },
+      user: { id: targetUserId },
+    });
+  }
+
+  async leaveWorkspace(workspaceId: string, user: User): Promise<{ message: string }> {
+    const workspace = await this.workspaceRepo.findOne({
+      where: { id: workspaceId },
+      relations: ['members', 'members.user'],
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const member = workspace.members.find((m) => m.user.id === user.id);
+    if (!member) {
+      throw new ForbiddenException('You are not a member of this workspace');
+    }
+
+    const isAdmin = member.role === WorkspaceMemberRole.ADMIN;
+    const otherAdmins = workspace.members.filter(m => m.role === WorkspaceMemberRole.ADMIN && m.user.id !== user.id);
+
+    if (isAdmin && otherAdmins.length === 0) {
+      throw new BadRequestException('Owner cannot leave workspace without assigning another admin');
+    }
+    await this.memberRepo.delete({ id: member.id });
+
+    return { message: 'Successfully left the workspace' };
+  }
+
+  async getOwnWorkspaces(user: User): Promise<Workspace[]> {
+    return this.workspaceRepo
+      .createQueryBuilder('workspace')
+      .leftJoin('workspace.members', 'member')
+      .leftJoinAndSelect('workspace.members', 'members')
+      .where('member.userId = :userId', { userId: user.id })
+      .andWhere('member.role = :role', { role: 'admin' })
+      .orderBy('workspace.created_at', 'DESC')
+      .getMany();
+  }
+
+  async getGuestWorkspaces(user: User): Promise<Workspace[]> {
+    return this.workspaceRepo
+      .createQueryBuilder('workspace')
+      .leftJoin('workspace.members', 'member')
+      .leftJoinAndSelect('workspace.members', 'members')
+      .where('member.userId = :userId', { userId: user.id })
+      .andWhere('member.role = :role', { role: 'member' })
+      .orderBy('workspace.created_at', 'DESC')
+      .getMany();
+  }
 }

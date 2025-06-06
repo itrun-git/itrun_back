@@ -68,7 +68,6 @@ export class UserService {
     if (!memberships || memberships.length === 0) {
       throw new NotFoundException('No workspaces found for this user');
     }
-    
     return memberships.map((m) => m.workspace);
   }
 

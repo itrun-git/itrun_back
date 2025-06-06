@@ -4,7 +4,7 @@ import { UserDto } from 'src/user/dto/user.dto';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceNameDto } from './dto/update-workspace-name.dto';
 import { UpdateWorkspaceVisibilityDto } from './dto/update-workspace-visibility.dto';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { WorkspaceMemberDto } from './dto/workspace-member.dto';
@@ -12,6 +12,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { User } from 'src/user/user.entity';
+import { Workspace } from './entities/workspace.entity';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -38,17 +39,8 @@ export class WorkspaceController {
     return this.workspaceService.updateName(id, user.id, dto.name);
   }
 
-  @ApiOperation({ summary: 'Upload or update workspace background image' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        image: { type: 'string', format: 'binary' },
-      },
-    },
-  })
   @Patch(':id/image')
+  @ApiOperation({ summary: 'Upload or update workspace background image' })
   @UseInterceptors(FileInterceptor('image', {
     storage: diskStorage({
       destination: './uploads/workspace-backgrounds',
@@ -59,7 +51,16 @@ export class WorkspaceController {
       },
     }),
   }))
-  async uploadWorkspaceImage( @Param('id') workspaceId: string, @UploadedFile() file: Express.Multer.File, @CurrentUser() user: User ) {
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        image: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  async uploadWorkspaceImage(@Param('id') workspaceId: string, @UploadedFile() file: Express.Multer.File, @CurrentUser() user: User) {
     if (!file) throw new BadRequestException('Файл не загружен');
     const imageUrl = `/uploads/workspace-backgrounds/${file.filename}`;
     return this.workspaceService.updateImage(workspaceId, user.id, imageUrl);
@@ -79,13 +80,40 @@ export class WorkspaceController {
 
   @Get(':id/invite-link')
   @ApiOperation({ summary: 'Generate invite link (admin only)' })
-  async generateInviteLink( @Param('id') workspaceId: string, @CurrentUser() user: User ) {
+  async generateInviteLink(@Param('id') workspaceId: string, @CurrentUser() user: User) {
     return this.workspaceService.generateInviteLink(workspaceId, user.id);
   }
 
   @Post('join')
   @ApiOperation({ summary: 'Join a workspace using invite token' })
-  async joinWorkspaceWithToken( @Body('token') token: string, @CurrentUser() user: User ) {
+  async joinWorkspaceWithToken(@Body('token') token: string, @CurrentUser() user: User) {
     return this.workspaceService.joinWithInviteToken(token, user.id);
   }
+
+  @Delete(':workspaceId/members/:userId')
+  @ApiOperation({ summary: 'Remove member from workspace (admin only)' })
+  async removeMember(@Param('workspaceId') workspaceId: string, @Param('userId') userId: string, @CurrentUser() user: User): Promise<void> {
+    return this.workspaceService.removeMember(workspaceId, user, userId);
+  }
+
+  @Delete(':workspaceId/leave')
+  @ApiOperation({ summary: 'Leave workspace (for members)' })
+  async leaveWorkspace(@Param('workspaceId') workspaceId: string, @CurrentUser() user: User): Promise<{ message: string }> {
+    return this.workspaceService.leaveWorkspace(workspaceId, user);
+  }
+
+  @Get('own')
+  @ApiOperation({ summary: 'Get workspaces where user is admin' })
+  @ApiResponse({ status: 200, description: 'List of owned workspaces', type: [Workspace] })
+  async getOwn(@CurrentUser() user: User): Promise<Workspace[]> {
+    return this.workspaceService.getOwnWorkspaces(user);
+  }
+
+  @Get('guest')
+  @ApiOperation({ summary: 'Get workspaces where user is guest (member)' })
+  @ApiResponse({ status: 200, description: 'List of guest workspaces', type: [Workspace] })
+  async getGuest(@CurrentUser() user: User): Promise<Workspace[]> {
+    return this.workspaceService.getGuestWorkspaces(user);
+  }
+
 }
