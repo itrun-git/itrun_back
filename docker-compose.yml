@@ -1,14 +1,43 @@
 services:
   app:
-    container_name: itrun_container
+    container_name: itrun_back_container
     build:
       context: .
       dockerfile: Dockerfile
-    env_file:
-      - .env
+    env_file: ".env"
+    environment:
+      MYSQL_DATABASE: "${DB_NAME}"
+      MYSQL_USER: "${DB_USER}"
+      MYSQL_PASSWORD: "${DB_PASS}"
+      MYSQL_ROOT_PASSWORD: "${DB_PASS}"
     ports:
-      - "${PORT}:${PORT}"
+      - "3002:3000"
     volumes:
-      - .:/app
       - /app/node_modules
-    command: npm run start:dev
+    command: "npm run start"
+    networks:
+      - itrun_app_network
+    depends_on:
+      - db
+  db:
+    image: mysql:8.0.40
+    container_name: itrun_db_container
+    restart: unless-stopped
+    ports:
+      - 3307:${DB_PORT}
+    env_file: ".env"
+    networks:
+      - itrun_app_network
+    volumes:
+      - itrun_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "${DB_HOST}", "-u${DB_USER}", "-p${DB_PASS}"]
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 5
+volumes:
+  itrun_db:
+networks:
+  itrun_app_network:
+    driver: bridge
