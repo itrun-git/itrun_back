@@ -20,6 +20,12 @@ import { Workspace } from './entities/workspace.entity';
 export class WorkspaceController {
   constructor(private readonly workspaceService: WorkspaceService) {}
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Get workspace by id' })
+  getWorkspace(@Param('id') id: string) {
+    return this.workspaceService.getWorkspaceById(id);
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a new workspace' })
   create(@Body() dto: CreateWorkspaceDto, @CurrentUser() user: UserDto) {

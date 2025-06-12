@@ -18,6 +18,18 @@ export class WorkspaceService {
     private readonly configService: ConfigService,
   ) {}
 
+  async getWorkspaceById(id: string): Promise<Workspace> {
+    const workspace = await this.workspaceRepo.findOne({
+      where: { id }
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    return workspace;
+  }
+
   async createWorkspace(dto: CreateWorkspaceDto, userId: string): Promise<Workspace> {
     const workspace = this.workspaceRepo.create(dto);
     await this.workspaceRepo.save(workspace);

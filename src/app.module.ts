@@ -8,6 +8,8 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { join } from 'path';
 import { WorkspaceModule } from './workspace/workspace.module';
 import { BoardModule } from './board/board.module';
+import { ColumnModule } from './column/column.module';
+import { CardModule } from './card/card.module';
 
 @Module({
   imports: [
@@ -58,6 +60,8 @@ import { BoardModule } from './board/board.module';
     AuthModule,
     WorkspaceModule,
     BoardModule,
+    ColumnModule,
+    CardModule,
   ],
 })
 export class AppModule {}
