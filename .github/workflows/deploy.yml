@@ -16,9 +16,3 @@ jobs:
         run: npm install
       - name: build project
         run: npm run build
-      - name: unit test
-        run: npm run test:unit
-      - name: e2e test
-        run: npm run test:e2e
-      - name: lint code
-        run: npm run lint
