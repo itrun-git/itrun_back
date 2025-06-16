@@ -12,5 +12,6 @@ import { WorkspaceModule } from 'src/workspace/workspace.module';
   imports: [TypeOrmModule.forFeature([Board, FavoriteBoard, BoardMember]), ConfigModule, WorkspaceModule],
   controllers: [BoardController, BoardCommonController],
   providers: [BoardService],
+  exports: [BoardService, TypeOrmModule.forFeature([Board, FavoriteBoard, BoardMember])],
 })
 export class BoardModule {}

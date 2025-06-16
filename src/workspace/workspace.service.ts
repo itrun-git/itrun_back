@@ -14,16 +14,16 @@ import { User } from 'src/user/user.entity';
 export class WorkspaceService {
   constructor(
     @InjectRepository(Workspace) 
-    private workspaceRepo: Repository<Workspace>,
+    private workspaceRepository: Repository<Workspace>,
 
     @InjectRepository(WorkspaceMember) 
-    private memberRepo: Repository<WorkspaceMember>,
+    private memberRepository: Repository<WorkspaceMember>,
 
     private readonly configService: ConfigService,
   ) {}
 
   async getWorkspaceById(id: string): Promise<Workspace> {
-    const workspace = await this.workspaceRepo.findOne({
+    const workspace = await this.workspaceRepository.findOne({
       where: { id }
     });
 
@@ -35,25 +35,25 @@ export class WorkspaceService {
   }
 
   async createWorkspace(dto: CreateWorkspaceDto, userId: string): Promise<Workspace> {
-    const workspace = this.workspaceRepo.create(dto);
-    await this.workspaceRepo.save(workspace);
+    const workspace = this.workspaceRepository.create(dto);
+    await this.workspaceRepository.save(workspace);
 
-    const member = this.memberRepo.create({
+    const member = this.memberRepository.create({
       user: { id: userId },
       workspace,
       role: WorkspaceMemberRole.ADMIN,
     });
-    await this.memberRepo.save(member);
+    await this.memberRepository.save(member);
 
     return workspace;
   }
 
   async getById(id: string) {
-    return await this.workspaceRepo.findOneBy({ id });
+    return await this.workspaceRepository.findOneBy({ id });
   }
 
   async getMembers(workspaceId: string): Promise<WorkspaceMemberDto[]> {
-    const workspace = await this.workspaceRepo.findOne({
+    const workspace = await this.workspaceRepository.findOne({
       where: { id: workspaceId },
     });
 
@@ -61,7 +61,7 @@ export class WorkspaceService {
       throw new NotFoundException('Workspace not found');
     }
 
-    const members = await this.memberRepo
+    const members = await this.memberRepository
       .createQueryBuilder('member')
       .innerJoin('member.user', 'user')
       .where('member.workspace.id = :workspaceId', { workspaceId })
@@ -82,7 +82,7 @@ export class WorkspaceService {
   }
 
   async updateName(workspaceId: string, userId: string, name: string) {
-    const member = await this.memberRepo.findOne({
+    const member = await this.memberRepository.findOne({
       where: {
         workspace: { id: workspaceId },
         user: { id: userId },
@@ -96,11 +96,11 @@ export class WorkspaceService {
       throw new ForbiddenException('Нет доступа');
 
     member.workspace.name = name;
-    return this.workspaceRepo.save(member.workspace);
+    return this.workspaceRepository.save(member.workspace);
   }
 
   async updateImage(workspaceId: string, userId: string, imageUrl: string) {
-    const member = await this.memberRepo.findOne({
+    const member = await this.memberRepository.findOne({
       where: {
         workspace: { id: workspaceId },
         user: { id: userId },
@@ -112,7 +112,7 @@ export class WorkspaceService {
       throw new ForbiddenException('Access denied');
     }
 
-    await this.workspaceRepo.update(workspaceId, { imageUrl });
+    await this.workspaceRepository.update(workspaceId, { imageUrl });
     return { success: true, imageUrl };
   }
 
@@ -121,7 +121,7 @@ export class WorkspaceService {
     userId: string,
     visibility: WorkspaceVisibility,
   ) {
-    const member = await this.memberRepo.findOne({
+    const member = await this.memberRepository.findOne({
       where: {
         workspace: { id: workspaceId },
         user: { id: userId },
@@ -135,11 +135,11 @@ export class WorkspaceService {
       throw new ForbiddenException('Access denied');
 
     member.workspace.visibility = visibility;
-    return this.workspaceRepo.save(member.workspace);
+    return this.workspaceRepository.save(member.workspace);
   }
 
   async deleteWorkspace(id: string, userId: string) {
-    const member = await this.memberRepo.findOne({
+    const member = await this.memberRepository.findOne({
       where: {
         workspace: { id },
         user: { id: userId },
@@ -151,11 +151,11 @@ export class WorkspaceService {
     if (member.role !== WorkspaceMemberRole.ADMIN)
       throw new ForbiddenException('Only admin can delete');
 
-    await this.workspaceRepo.remove(member.workspace);
+    await this.workspaceRepository.remove(member.workspace);
   }
 
   async generateInviteLink(workspaceId: string, userId: string) {
-    const member = await this.memberRepo.findOne({
+    const member = await this.memberRepository.findOne({
       where: { workspace: { id: workspaceId }, user: { id: userId } },
       relations: ['workspace', 'user'],
     });
@@ -183,14 +183,14 @@ export class WorkspaceService {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
-    const workspace = await this.workspaceRepo.findOne({
+    const workspace = await this.workspaceRepository.findOne({
       where: { id: payload.workspaceId },
     });
     if (!workspace) {
       throw new NotFoundException('Workspace not found');
     }
 
-    const alreadyMember = await this.memberRepo.findOne({
+    const alreadyMember = await this.memberRepository.findOne({
       where: { workspace: { id: payload.workspaceId }, user: { id: userId } },
       relations: ['workspace', 'user'],
     });
@@ -199,13 +199,13 @@ export class WorkspaceService {
       return { message: 'You are already a member of this workspace' };
     }
 
-    const member = this.memberRepo.create({
+    const member = this.memberRepository.create({
       workspace,
       user: { id: userId },
       role: WorkspaceMemberRole.MEMBER,
     });
 
-    await this.memberRepo.save(member);
+    await this.memberRepository.save(member);
 
     return {
       message: 'Successfully joined the workspace',
@@ -218,7 +218,7 @@ export class WorkspaceService {
     user: User,
     targetUserId: string,
   ): Promise<void> {
-    const workspace = await this.workspaceRepo.findOne({
+    const workspace = await this.workspaceRepository.findOne({
       where: { id: workspaceId },
       relations: ['members', 'members.user'],
     });
@@ -251,7 +251,7 @@ export class WorkspaceService {
       throw new ForbiddenException('Cannot remove another admin');
     }
 
-    await this.memberRepo.delete({
+    await this.memberRepository.delete({
       workspace: { id: workspaceId },
       user: { id: targetUserId },
     });
@@ -261,7 +261,7 @@ export class WorkspaceService {
     workspaceId: string,
     user: User,
   ): Promise<{ message: string }> {
-    const workspace = await this.workspaceRepo.findOne({
+    const workspace = await this.workspaceRepository.findOne({
       where: { id: workspaceId },
       relations: ['members', 'members.user'],
     });
@@ -285,13 +285,13 @@ export class WorkspaceService {
         'Owner cannot leave workspace without assigning another admin',
       );
     }
-    await this.memberRepo.delete({ id: member.id });
+    await this.memberRepository.delete({ id: member.id });
 
     return { message: 'Successfully left the workspace' };
   }
 
   async getOwnWorkspaces(user: User): Promise<Workspace[]> {
-    return this.workspaceRepo
+    return this.workspaceRepository
       .createQueryBuilder('workspace')
       .leftJoin('workspace.members', 'member')
       .leftJoinAndSelect('workspace.members', 'members')
@@ -302,7 +302,7 @@ export class WorkspaceService {
   }
 
   async getGuestWorkspaces(user: User): Promise<Workspace[]> {
-    return this.workspaceRepo
+    return this.workspaceRepository
       .createQueryBuilder('workspace')
       .leftJoin('workspace.members', 'member')
       .leftJoinAndSelect('workspace.members', 'members')
@@ -311,4 +311,30 @@ export class WorkspaceService {
       .orderBy('workspace.created_at', 'DESC')
       .getMany();
   }
+
+  async checkAccess(workspaceId: string, userId: string) {
+    const member = await this.memberRepository.findOne({
+      where: { workspace: { id: workspaceId }, user: { id: userId } },
+    });
+
+    if (!member) {
+      throw new ForbiddenException('Access denied: you are not a member of this workspace');
+    }
+  }
+
+  async isAdmin(workspaceId: string, user: User): Promise<boolean> {
+    const workspace = await this.workspaceRepository.findOne({
+      where: { id: workspaceId },
+      relations: ['members', 'members.user'],
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    return workspace.members.some(
+      (member) => member.user.id === user.id && member.role === WorkspaceMemberRole.ADMIN,
+    );
+  }
+
 }

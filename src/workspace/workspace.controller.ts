@@ -1,28 +1,10 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Param,
-  UseGuards,
-  Get,
-  Patch,
-  Delete,
-  UseInterceptors,
-  UploadedFile,
-  BadRequestException,
-} from '@nestjs/common';
+import { Controller, Post, Body, Param, UseGuards, Get, Patch, Delete, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { WorkspaceService } from './workspace.service';
 import { UserDto } from 'src/user/dto/user.dto';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceNameDto } from './dto/update-workspace-name.dto';
 import { UpdateWorkspaceVisibilityDto } from './dto/update-workspace-visibility.dto';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiConsumes,
-  ApiBody,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { WorkspaceMemberDto } from './dto/workspace-member.dto';

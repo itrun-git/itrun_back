@@ -3,13 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Board } from './entities/board.entity';
 import { Repository } from 'typeorm';
 import { BoardMember, BoardRole } from './entities/board-member.entity';
-import { WorkspaceService } from 'src/workspace/workspace.service';
 import { User } from 'src/user/user.entity';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { Workspace } from 'src/workspace/entities/workspace.entity';
-import { WorkspaceMemberRole } from 'src/workspace/entities/workspace-member.entity';
 import { FavoriteBoard } from './entities/favorite-board.entity';
 import { UpdateBoardDto } from './dto/update-board.dto';
+import { WorkspaceService } from 'src/workspace/workspace.service';
 
 @Injectable()
 export class BoardService {
@@ -25,6 +24,8 @@ export class BoardService {
 
     @InjectRepository(FavoriteBoard)
     private readonly favoriteBoardRepository: Repository<FavoriteBoard>,
+
+    private readonly worksapceService: WorkspaceService,
   ) {}
 
   async create(workspaceId: string, user: User, dto: CreateBoardDto, image?: Express.Multer.File): Promise<Board> {
@@ -36,9 +37,7 @@ export class BoardService {
       throw new NotFoundException('Workspace not found');
     }
 
-    const isAdmin = workspace.members.some(
-      (member) => member.user.id === user.id && member.role === WorkspaceMemberRole.ADMIN,
-    );
+    const isAdmin = await this.worksapceService.isAdmin(workspaceId, user);
     if (!isAdmin) {
       throw new ForbiddenException('Only admin can create a board');
     }
@@ -82,6 +81,24 @@ export class BoardService {
       board.imageUrl = `/uploads/board-backgrounds/${image.filename}`;
     }
     return this.boardRepository.save(board);
+  }
+
+  async deleteBoard(boardId: string, user: User): Promise<{ message: string }> {
+    const board = await this.boardRepository.findOne({
+      where: { id: boardId },
+      relations: ['members', 'members.user'],
+    });
+    if (!board) {
+      throw new NotFoundException('Board not found');
+    }
+
+    const isMember = board.members.some((member) => member.user.id === user.id);
+    if (!isMember) {
+      throw new ForbiddenException('You are not a member of this board');
+    }
+
+    await this.boardRepository.remove(board);
+    return { message: 'Board deleted successfully' };
   }
 
   async getAllByWorkspace(workspaceId: string, user: User): Promise<Board[]> {

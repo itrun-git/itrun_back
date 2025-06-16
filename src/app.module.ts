@@ -10,6 +10,7 @@ import { WorkspaceModule } from './workspace/workspace.module';
 import { BoardModule } from './board/board.module';
 import { ColumnModule } from './column/column.module';
 import { CardModule } from './card/card.module';
+import { LabelModule } from './label/label.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { CardModule } from './card/card.module';
     BoardModule,
     ColumnModule,
     CardModule,
+    LabelModule,
   ],
 })
 export class AppModule {}

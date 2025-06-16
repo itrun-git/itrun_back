@@ -1,6 +1,9 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, ManyToMany, JoinTable, OneToMany } from 'typeorm';
-import { Column as ColumnEntity } from 'src/column/entities/column.entity';
+import { Column as BoardColumn } from 'src/column/entities/column.entity';
 import { User } from 'src/user/user.entity';
+import { Attachment } from './attachment.entity';
+import { Comment } from './comment.entity';
+import { Label } from 'src/label/entities/label.entity';
 
 @Entity('cards')
 export class Card {
@@ -11,39 +14,36 @@ export class Card {
   title: string;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description?: string;
 
   @Column({ default: false })
   isCompleted: boolean;
 
   @Column({ type: 'timestamp', nullable: true })
-  dueDate: Date;
+  dueDate?: Date;
+
+  @ManyToMany(() => Label, (label) => label.cards, { cascade: true, eager: false })
+  @JoinTable()
+  labels: Label[];
+
+  @ManyToMany(() => User)
+  @JoinTable()
+  members: User[];
+
+  @OneToMany(() => Attachment, (attachment) => attachment.card, { cascade: true })
+  attachments: Attachment[];
+
+  @Column({ nullable: true })
+  coverPath?: string;
 
   @Column()
   position: number;
 
-  @ManyToOne(() => ColumnEntity, (column) => column.cards, { onDelete: 'CASCADE' })
-  column: ColumnEntity;
+  @ManyToOne(() => BoardColumn, (column) => column.cards, { onDelete: 'CASCADE' })
+  column: BoardColumn;
 
-  @ManyToMany(() => User)
-  @JoinTable({
-    name: 'card_members',
-    joinColumn: { name: 'card_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
-  })
-  members: User[];
-
-//   @OneToMany(() => CardLabel, (label) => label.card, { cascade: true })
-//   labels: CardLabel[];
-
-//   @OneToMany(() => CardAttachment, (attachment) => attachment.card, { cascade: true })
-//   attachments: CardAttachment[];
-
-  @Column({ nullable: true })
-  coverUrl: string;
-
-//   @OneToMany(() => CardComment, (comment) => comment.card, { cascade: true })
-//   comments: CardComment[];
+  @OneToMany(() => Comment, (comment) => comment.card, { cascade: true })
+  comments: Comment[];
 
   @CreateDateColumn()
   createdAt: Date;

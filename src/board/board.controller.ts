@@ -65,6 +65,7 @@ export class BoardController {
   }
 }
 
+
 // BoardCommonController for common board operations
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -98,6 +99,13 @@ export class BoardCommonController {
   )
   async updateBoard(@Param('id') boardId: string, @CurrentUser() user: User, @UploadedFile() image: Express.Multer.File, @Body() dto: UpdateBoardDto): Promise<Board> {
     return this.boardService.updateBoard(boardId, user, dto, image);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete board by ID (for members)' })
+  @ApiResponse({ status: 200, description: 'Board successfully deleted' })
+  async deleteBoard(@Param('id') boardId: string, @CurrentUser() user: User): Promise<{ message: string }> {
+    return this.boardService.deleteBoard(boardId, user);
   }
 
   @Get('favorites')
