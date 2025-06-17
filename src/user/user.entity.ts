@@ -15,6 +15,9 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ name: 'google_id', type: 'varchar', nullable: true, unique: true })
+  googleId?: string;
+
   @Column({ unique: true, nullable: false })
   email: string;
 

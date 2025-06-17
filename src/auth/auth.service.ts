@@ -17,25 +17,25 @@ export class AuthService {
 
   constructor(
     @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly userRepository: Repository<User>,
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
   ) {}
 
   async checkEmail(dto: EmailCheckDto): Promise<{ available: boolean }> {
-    const exists = await this.userRepo.findOne({ where: { email: dto.email } });
+    const exists = await this.userRepository.findOne({ where: { email: dto.email } });
     return { available: !exists };
   }
 
   async createUser(dto: CreateUserDto): Promise<User> {
-    const exists = await this.userRepo.findOne({ where: { email: dto.email } });
+    const exists = await this.userRepository.findOne({ where: { email: dto.email } });
     if (exists) throw new ConflictException('Email already in use');
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const verificationToken = this.generateVerificationToken();
 
-    const user = this.userRepo.create({
+    const user = this.userRepository.create({
       email: dto.email,
       fullName: dto.name,
       passwordHash,
@@ -45,19 +45,19 @@ export class AuthService {
       purpose: UserPurpose.PERSONAL, // default, обновится позже
     });
 
-    return await this.userRepo.save(user);
+    return await this.userRepository.save(user);
   }
 
   async uploadAvatar(userId: string, avatarUrl: string): Promise<User> {
     const user = await this.findUserByIdOrFail(userId);
     user.avatarUrl = avatarUrl;
-    return await this.userRepo.save(user);
+    return await this.userRepository.save(user);
   }
 
   async setPurpose(userId: string, purpose: UserPurpose): Promise<User> {
     const user = await this.findUserByIdOrFail(userId);
     user.purpose = purpose;
-    return await this.userRepo.save(user);
+    return await this.userRepository.save(user);
   }
 
   async sendVerificationEmail(userId: string): Promise<void> {
@@ -66,7 +66,7 @@ export class AuthService {
 
     const token = user.verificationToken || this.generateVerificationToken();
     user.verificationToken = token;
-    await this.userRepo.save(user);
+    await this.userRepository.save(user);
 
     const url = `${this.configService.get('FRONTEND_URL')}/verify-email?token=${token}`;
 
@@ -82,14 +82,14 @@ export class AuthService {
   }
 
   async confirmEmail(token: string): Promise<void> {
-    const user = await this.userRepo.findOne({ where: { verificationToken: token } });
+    const user = await this.userRepository.findOne({ where: { verificationToken: token } });
     if (!user) throw new NotFoundException('Invalid or expired token');
 
     user.emailVerified = true;
     user.isActive = true;
     user.verificationToken = undefined;
 
-    await this.userRepo.save(user);
+    await this.userRepository.save(user);
   }
 
   private generateVerificationToken(): string {
@@ -97,13 +97,13 @@ export class AuthService {
   }
 
   private async findUserByIdOrFail(id: string): Promise<User> {
-    const user = await this.userRepo.findOne({ where: { id } });
+    const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
   async resendVerificationEmail(email: string): Promise<void> {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const user = await this.userRepository.findOne({ where: { email } });
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -114,7 +114,7 @@ export class AuthService {
     }
 
     user.verificationToken = this.generateVerificationToken();
-    await this.userRepo.save(user);
+    await this.userRepository.save(user);
 
     await this.mailerService.sendMail({
       to: user.email,
@@ -130,7 +130,7 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    const user = await this.userRepository.findOne({ where: { email: dto.email } });
     if (!user) {
       throw new BadRequestException('Invalid email or password');
     }
@@ -156,20 +156,51 @@ export class AuthService {
   async changeRegistrationEmail(dto: ChangeRegistrationEmailDto): Promise<{ available: boolean }> {
     const { currentEmail, newEmail } = dto;
 
-    const emailTaken = await this.userRepo.findOne({ where: { email: newEmail } });
+    const emailTaken = await this.userRepository.findOne({ where: { email: newEmail } });
     if (emailTaken) {
       throw new ConflictException('New email already in use');
     }
 
-    const user = await this.userRepo.findOne({ where: { email: currentEmail } });
+    const user = await this.userRepository.findOne({ where: { email: currentEmail } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
     user.email = newEmail;
-    await this.userRepo.save(user);
+    await this.userRepository.save(user);
 
     return { available: true };
+  }
+
+  async findOrCreateGoogleUser(profile: { email: string, googleId: string, fullName: string, avatarUrl?: string }): Promise<User> {
+    let user = await this.userRepository.findOne({
+      where: [
+        { googleId: profile.googleId },
+        { email: profile.email },
+      ]
+    });
+
+    if (user) {
+      if (!user.googleId) {
+        user.googleId = profile.googleId;
+        user.avatarUrl = profile.avatarUrl;
+        user.emailVerified = true;
+        user.isActive = true;
+        await this.userRepository.save(user);
+      }
+      return user;
+    }
+    user = this.userRepository.create({
+      email: profile.email,
+      fullName: profile.fullName,
+      avatarUrl: profile.avatarUrl,
+      googleId: profile.googleId,
+      passwordHash: '',
+      emailVerified: true,
+      isActive: true,
+      purpose: UserPurpose.PERSONAL,
+    });
+    return await this.userRepository.save(user);
   }
   
 }

@@ -35,6 +35,16 @@ export class CardController {
     return this.cardService.remove(workspaceId, boardId, columnId, cardId, user);
   }
 
+  @Patch(':id/complete')
+  completeCard(@Param('id') cardId: string) {
+    return this.cardService.completeCard(cardId);
+  }
+
+  @Patch(':id/uncomplete')
+  uncompleteCard(@Param('id') cardId: string) {
+    return this.cardService.uncompleteCard(cardId);
+  }
+
   @Post(':cardId/move')
   @ApiOperation({ summary: 'Move card to another column or position' })
   @ApiBody({
