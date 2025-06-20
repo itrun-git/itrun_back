@@ -16,7 +16,7 @@ export class UserService {
     private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
   ) {}
 
-  async findFieldById(userId: string, field: keyof User): Promise<any> {
+  async findById(userId: string, field: keyof User): Promise<any> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       select: [field],
@@ -24,6 +24,12 @@ export class UserService {
 
     if (!user) throw new NotFoundException('User not found');
     return user[field];
+  }
+
+  async findByEmail(email: string): Promise<User> {
+    const user = await this.userRepository.findOneBy({ email });
+    if (!user) throw new NotFoundException('User not found');
+    return user;
   }
 
   async updateName(userId: string, fullName: string) {
