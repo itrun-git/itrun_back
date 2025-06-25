@@ -16,22 +16,10 @@ import { UpdateAvatarDto } from './dto/update-avatar.dto';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @ApiOperation({ summary: 'Get user' })
-  @Get()
-  getUser(@CurrentUser() user: UserDto) {
-    return this.userService.findById(user.id, 'id');
-  }
-
-  @ApiOperation({ summary: 'Get user by email' })
-  @Get(':email')
-  getUserByEmail(@Param('email') email: string) {
-    return this.userService.findByEmail(email);
-  }
-
   @ApiOperation({ summary: 'Get user name' })
   @Get('fullName')
   getFullName(@CurrentUser() user: UserDto) {
-    return this.userService.findById(user.id, 'fullName');
+    return this.userService.findFieldById(user.id, 'fullName');
   }
 
   @ApiOperation({ summary: 'Update full name' })
@@ -43,7 +31,7 @@ export class UserController {
   @ApiOperation({ summary: 'Get user email' })
   @Get('email')
   getEmail(@CurrentUser() user: UserDto) {
-    return this.userService.findById(user.id, 'email');
+    return this.userService.findFieldById(user.id, 'email');
   }
 
   @ApiOperation({ summary: 'Update email address' })
@@ -61,7 +49,7 @@ export class UserController {
   @ApiOperation({ summary: 'Get user avatar URL' })
   @Get('avatar')
   getAvatar(@CurrentUser() user: UserDto) {
-    return this.userService.findById(user.id, 'avatarUrl');
+    return this.userService.findFieldById(user.id, 'avatarUrl');
   }
 
   @ApiOperation({ summary: 'Update avatar URL' })
@@ -73,7 +61,7 @@ export class UserController {
   @ApiOperation({ summary: 'Get user purpose' })
   @Get('purpose')
   getPurpose(@CurrentUser() user: UserDto) {
-    return this.userService.findById(user.id, 'purpose');
+    return this.userService.findFieldById(user.id, 'purpose');
   }
 
   @ApiOperation({ summary: 'Update user purpose' })

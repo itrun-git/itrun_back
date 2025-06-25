@@ -135,26 +135,6 @@ export class CardService {
     };
   }
 
-  async completeCard(cardId: string): Promise<Card> {
-    const card = await this.cardRepository.findOne({ where: { id: cardId } });
-    if (!card) {
-      throw new NotFoundException('Card not found');
-    }
-
-    card.isCompleted = true;
-    return this.cardRepository.save(card);
-  }
-
-  async uncompleteCard(cardId: string): Promise<Card> {
-    const card = await this.cardRepository.findOne({ where: { id: cardId } });
-    if (!card) {
-      throw new NotFoundException('Card not found');
-    }
-
-    card.isCompleted = false;
-    return this.cardRepository.save(card);
-  }
-
   async move(workspaceId: string, cardId: string, user: User, newColumnId: string, newPosition?: number) {
     await this.workspaceService.checkAccess(workspaceId, user.id);
 
@@ -537,4 +517,31 @@ export class CardService {
 
     return { message: `Moved ${cards.length} cards to target column` };
   }
+
+  async getCard(workspaceId: string, boardId: string, columnId: string, cardId: string, user: User) {
+  await this.workspaceService.checkAccess(workspaceId, user.id);
+
+  const card = await this.cardRepository.findOne({
+    where: { 
+      id: cardId, 
+      column: { id: columnId, board: { id: boardId } } 
+    },
+    relations: [
+      'column', 
+      'column.board', 
+      'members', 
+      'labels', 
+      'attachments',
+      'comments',
+      'comments.author'
+    ],
+  });
+
+  if (!card) {
+    throw new NotFoundException('Card not found');
+  }
+
+  return card;
+}
+
 }

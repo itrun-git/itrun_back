@@ -17,6 +17,18 @@ import { extname } from 'path';
 export class CardController {
   constructor(private readonly cardService: CardService) {}
 
+@Get(':cardId')
+@ApiOperation({ summary: 'Get card by id' })
+getCard(
+  @Param('workspaceId') workspaceId: string, 
+  @Param('boardId') boardId: string, 
+  @Param('columnId') columnId: string, 
+  @Param('cardId', ParseUUIDPipe) cardId: string, 
+  @CurrentUser() user: User
+) {
+  return this.cardService.getCard(workspaceId, boardId, columnId, cardId, user);
+}
+
   @Post()
   @ApiOperation({ summary: 'Create card in column' })
   create(@Param('workspaceId') workspaceId: string, @Param('boardId') boardId: string, @Param('columnId') columnId: string, @CurrentUser() user: User, @Body() dto: CreateCardDto) {
@@ -33,16 +45,6 @@ export class CardController {
   @ApiOperation({ summary: 'Delete card' })
   remove(@Param('workspaceId') workspaceId: string, @Param('boardId') boardId: string, @Param('columnId') columnId: string, @Param('cardId', ParseUUIDPipe) cardId: string, @CurrentUser() user: User) {
     return this.cardService.remove(workspaceId, boardId, columnId, cardId, user);
-  }
-
-  @Patch(':id/complete')
-  completeCard(@Param('id') cardId: string) {
-    return this.cardService.completeCard(cardId);
-  }
-
-  @Patch(':id/uncomplete')
-  uncompleteCard(@Param('id') cardId: string) {
-    return this.cardService.uncompleteCard(cardId);
   }
 
   @Post(':cardId/move')
@@ -157,19 +159,19 @@ export class CardController {
     return this.cardService.deleteCardCover(workspaceId, boardId, columnId, cardId, user);
   }
 
-  @Post()
+  @Post(':cardId/comments')
   @ApiOperation({ summary: 'Add comment to card' })
   addComment(@Param('workspaceId') workspaceId: string, @Param('boardId') boardId: string, @Param('columnId') columnId: string, @Param('cardId', ParseUUIDPipe) cardId: string, @CurrentUser() user: User, @Body() dto: { text: string }) {
     return this.cardService.addComment(workspaceId, boardId, columnId, cardId, user, dto);
   }
 
-  @Get()
+  @Get(':cardId/comments')
   @ApiOperation({ summary: 'Get all comments of a card' })
   getComments(@Param('workspaceId') workspaceId: string, @Param('boardId') boardId: string, @Param('columnId') columnId: string, @Param('cardId', ParseUUIDPipe) cardId: string, @CurrentUser() user: User) {
     return this.cardService.getComments(workspaceId, boardId, columnId, cardId, user);
   }
 
-  @Delete(':commentId')
+  @Delete(':cardId/comments/:commentId')
   @ApiOperation({ summary: 'Delete comment (admin only)' })
   deleteComment(@Param('workspaceId') workspaceId: string, @Param('commentId', ParseUUIDPipe) commentId: string, @CurrentUser() user: User) {
     return this.cardService.deleteComment(workspaceId, commentId, user);

@@ -1,15 +1,15 @@
-import { BadRequestException, Body, Controller, Get, Patch, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Patch, Post, Query, UploadedFile, UseInterceptors, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UserPurpose } from '../user/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { ApiOperation, ApiBody, ApiConsumes, ApiBearerAuth, ApiTags, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiBody, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
 import { EmailCheckDto } from './dto/email-check.dto';
 import { SetPurposeDto } from './dto/set-purpose.dto';
 import { ChangeRegistrationEmailDto } from './dto/change-email.dto';
-import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
@@ -105,29 +105,6 @@ export class AuthController {
   @Patch('change-email')
   changeEmail(@Body() dto: ChangeRegistrationEmailDto) {
     return this.authService.changeRegistrationEmail(dto);
-  }
-
-  @ApiTags('OAuth2')
-  @ApiOperation({ summary: 'Redirect user to Google for authentication' })
-  @ApiResponse({ status: 302, description: 'Redirects user to Google OAuth page' })
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  googleAuth() {}
-
-  @ApiTags('OAuth2')
-  @ApiOperation({ summary: 'Google OAuth2 callback' })
-  @ApiResponse({ status: 302, description: 'Redirects user to frontend with JWT' })
-  @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
-  async googleAuthCallback(@Req() req, @Res() res) {
-    if (!req.user) {
-      throw new BadRequestException('Authentication failed');
-    }
-    const payload = { sub: req.user.id, email: req.user.email };
-    const token = await this.authService['jwtService'].signAsync(payload);
-
-    const frontendUrl = this.authService['configService'].get('FRONTEND_URL');
-    return res.redirect(`${frontendUrl}/auth/social-login?token=${token}`);
   }
 
 }
